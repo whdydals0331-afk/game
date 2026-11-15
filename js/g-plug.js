@@ -41,17 +41,17 @@ DDAK.register({
         minX:20,maxX:340-T.mw,damp:.4,
         press:correct()?{profile:T.prof,snapAt:T.snap}:{profile:p=>p<.1?.4:1,wallAt:T.wrong},
         onTouch(){sfx.tap()},
-        onCaught(){caught++;sfx.bump();buzz(10);api.hint('단자 입구에 안 맞아요. 옆으로 살짝')},
+        onCaught(){api.miss();caught++;sfx.bump();buzz(10);api.hint('단자 입구에 안 맞아요. 옆으로 살짝')},
         onEnter(){sfx.tink();buzz(8);api.hint(correct()?'맞았다… 쏘옥':'들어가나…?')},
         onSlip(j,p,r,before){
           buzz(4);
           T.det.forEach(d=>{if(before<d&&p>=d&&!passed[d]){passed[d]=true;sfx.click(.45);buzz(15);fx.shake(1);api.hint('톡… 아직이에요, 조금 더')}});
           if(r>1.5&&!said){said=true;api.hint('빡빡해요… 거의 다 왔어요')}
         },
-        onWall(){wrongTries++;sfx.bump();buzz(30);fx.shake(3);api.hint('툭. 반대 방향이에요! 뒤집어 보세요');api.pulse('flip');const me=ins;setTimeout(()=>{if(ins===me&&state==='play'&&!flipping){make(slotX,FACE+30);sfx.back()}},420)},
+        onWall(){api.miss();wrongTries++;sfx.bump();buzz(30);fx.shake(3);api.hint('툭. 반대 방향이에요! 뒤집어 보세요');api.pulse('flip');const me=ins;setTimeout(()=>{if(ins===me&&state==='play'&&!flipping){make(slotX,FACE+30);sfx.back()}},420)},
         onSnapStart(){fx.slow(.25,.3)},
         onSnap(){
-          state='done';
+          state='done';api.hit(180,FACE+230,ins.perfect);
           sfx.click(1.2);sfx.thunk(T.lamp?1:.55);buzz([20,30,60]);fx.shake(T.lamp?7:4);
           fx.seam(slotX-T.bw/2+T.mw/2,FACE,slotX+T.mw/2+T.bw/2,FACE);
           fx.text('딸깍!',180,FACE+170,{size:64,color:'#fff6c9'});

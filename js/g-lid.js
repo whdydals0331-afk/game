@@ -47,7 +47,7 @@ DDAK.register({
           onSlip(){buzz(4)},
           onSnapStart(){fx.slow(.15,.35)},
           onSnap(){
-            f.done=true;active=null;sfx.click(1.2);sfx.thunk(.35);buzz([25,30,40]);fx.shake(3.5);
+            f.done=true;active=null;api.hit(CX,CY,true);sfx.click(1.2);sfx.thunk(.35);buzz([25,30,40]);fx.shake(3.5);
             const r=flapRect(f);fx.burst(r.x+r.w/2,r.y+r.h/2,{n:8,colors:['#fff','#ffe9b0'],speed:80,size:2,grav:0});
             fx.text('딸깍',r.x+r.w/2,r.y+r.h/2-30,{size:34,color:'#fff6c9'});
             const left=flaps.filter(q=>!q.done).length;
@@ -134,7 +134,7 @@ DDAK.register({
             onSlip(){buzz(4)},
             onSnapStart(){fx.slow(.25,.3)},
             onSnap(){
-              state='done';btn=0;sfx.pop();sfx.thunk(.5);buzz([20,30,60]);fx.shake(5);
+              state='done';btn=0;api.hit(CX,CY+170,true);sfx.pop();sfx.thunk(.5);buzz([20,30,60]);fx.shake(5);
               fx.text('뽁!',CX,CY-150,{size:66,color:'#fff6c9'});setTimeout(()=>sfx.chime(),220);
               g.doneAt=t;
               api.hint('가운데 단추가 쏙 들어갔어요. 완전 밀폐');

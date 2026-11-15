@@ -47,10 +47,10 @@ DDAK.register({
           buzz(4);
           if(c.k==='exact'&&p>.45&&!said){said=true;api.hint('양옆 책이 밀려나요… 조금만 더')}
         },
-        onWall(){wrong++;sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요');setTimeout(()=>{if(active===c&&(state==='drag'||state==='hold'))springOut()},320)},
+        onWall(){api.miss();wrong++;sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요');setTimeout(()=>{if(active===c&&(state==='drag'||state==='hold'))springOut()},320)},
         onSnapStart(){fx.slow(.25,.33)},
         onSnap(){
-          state='snapped';sfx.thunk(.85);buzz([30,40,60]);fx.shake(5);wob=1;
+          state='snapped';api.hit(180,200,ins.perfect);sfx.thunk(.85);buzz([30,40,60]);fx.shake(5);wob=1;
           fx.burst(gap.x+gap.w/2,contactY,{n:12,colors:['#fff6e0','#e9dcc3'],speed:90,up:40,size:2});
           fx.seam(gap.x-2,SHELF,gap.x+gap.w+2,SHELF);
           fx.text('쑤욱!',180,140,{size:62,color:'#fff6c9'});
@@ -74,7 +74,7 @@ DDAK.register({
       const c=active;anim={c,fx:ins.x,fy:ins.y,t:0,dur:.35,spring:true};state='anim';
     }
     function loose(){
-      state='loose';wrong++;anim={t:0};sfx.tonk();buzz(20);api.hint('헐렁해요… 딱 맞는 책이 아니에요');
+      state='loose';api.miss();wrong++;anim={t:0};sfx.tonk();buzz(20);api.hint('헐렁해요… 딱 맞는 책이 아니에요');
     }
     g.down=(x,y)=>{
       if(state==='drag'||state==='insert'){ins.down(x,y);return}

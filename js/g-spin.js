@@ -52,7 +52,7 @@ DDAK.register({
           const a=Math.abs(err);
           if(a<=perfTol){state='sink';stT=0;land(true)}
           else if(a<=grindTol){state='rim';stT=0;sfx.bump();buzz(15);fx.shake(2);api.hint('걸렸다… 버텨라…')}
-          else{state='bounce';stT=0;sfx.tonk();buzz(20);fx.shake(3);miss++;api.hint(`각도가 ${a.toFixed(1)}° 어긋났어요. 다시!`)}
+          else{state='bounce';stT=0;sfx.tonk();buzz(20);fx.shake(3);miss++;api.miss();api.hint(`각도가 ${a.toFixed(1)}° 어긋났어요. 다시!`)}
         }
       }else if(state==='rim'){
         wob=Math.sin(stT*38)*Math.exp(-stT*3)*1.6;h=.05+Math.abs(wob)*.01;
@@ -78,6 +78,7 @@ DDAK.register({
       }
     };
     function land(perfect){
+      api.hit(CX,CY+130,perfect);
       results.push(perfect?2:1);
       sfx.thunk(perfect?1:.85);buzz(perfect?[30,40,60]:[25,30,40]);fx.shake(perfect?7:5);
       const c='#fff6c9';

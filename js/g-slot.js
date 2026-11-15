@@ -48,7 +48,7 @@ DDAK.register({
       slots=pickd.map((shape,i)=>{const s={shape,x,filled:false,t:0,mat:MATS[(lv-1+i)%MATS.length]};x+=dimsOf(shape).w*U+26;return s});
       clear=Math.max(.02,.5/Math.pow(lv,.8));tol=Math.max(2.5,7-lv*.5);
       spawn(0);
-      api.hint(slots.length>1?`홈 ${slots.length}개를 차례로 메워요. 빛나는 홈 입구에 딱 맞추면 쏘옥 빨려 들어가요`:'조각을 홈 입구에 딱 맞추기만 하면 쏘옥 빨려 들어가요');
+      api.hint(slots.length>1?`홈 ${slots.length}개. 입구에서 맞추고 살짝 눌러요. 정확할수록 완벽!`:'홈 입구에서 좌우를 맞추고 살짝 눌러요. 정확할수록 완벽!');
     };
     function spawn(i){
       idx=i;const S=slots[i];target=S.shape;cur=target;M=S.mat;slotX=S.x;
@@ -63,7 +63,7 @@ DDAK.register({
         press:{profile:p=>p<.06?.3:p<.6?.9+.4*p:p<.78?1.75:.45,snapAt:.88},
         canEnter:()=>sig(cur)===sig(target)?true:'모양 방향이 달라요. 돌려 보세요',
         onTouch(){sfx.tap()},
-        onCaught(msg,err){miss++;sfx.bump();buzz(12);fx.shake(1.5);if(msg)api.pulse('rot');api.hint(msg||(Math.abs(err)>tol*3?'빛나는 홈 위로 옮겨서 맞춰요':'턱! 살짝 어긋났어요. 옆으로 조금만'))},
+        onCaught(msg,err){api.miss();miss++;sfx.bump();buzz(12);fx.shake(1.5);if(msg)api.pulse('rot');api.hint(msg||(Math.abs(err)>tol*3?'빛나는 홈 위로 옮겨서 맞춰요':'턱! 살짝 어긋났어요. 옆으로 조금만'))},
         onEnter(){sfx.tink();buzz(10);api.hint('맞았다… 쏘오옥')},
         onSlip(j,p,r){
           buzz(4);
@@ -72,7 +72,7 @@ DDAK.register({
         },
         onSnapStart(){fx.slow(.28,.32)},
         onSnap(){
-          S.filled=true;S.t=0;state='wait';
+          S.filled=true;S.t=0;state='wait';api.hit(slotX+td.w*U/2,SURF-150,ins.perfect);
           const last=idx===slots.length-1,w=td.w*U;
           sfx.thunk(last?1:.8);buzz(last?[35,40,70]:[25,30,40]);fx.shake(last?8:5);
           fx.burst(slotX,SURF,{n:14,colors:['#f1dcb4','#d9b07a','#fff6e0'],speed:150,up:80,angle:-Math.PI*.75,spread:1.2,size:2.6});
