@@ -21,24 +21,27 @@ DDAK.register({
   create(api){
     const {sfx,buzz,fx}=api;
     const g={};
-    let T,ins,slotX,state,flipped,sockSide,flipA,flipping,wrongTries,led,lamp,latchA,passed,said,doneT;
-    g.start=lv=>{
-      T=TYPES[(lv-1)%TYPES.length];
+    let T,ins,slotX,state,flipped,sockSide,flipA,flipping,wrongTries,led,lamp,latchA,passed,said,doneT,round,LV,nextT,caught;
+    const ROUNDS=3;
+    g.start=lv=>{LV=lv;round=0;wrongTries=0;caught=0;setup()};
+    function setup(){
+      T=TYPES[(LV-1+round)%TYPES.length];nextT=0;
       slotX=Math.round(180-T.mw/2);
       sockSide=Math.random()<.5?-1:1;
       flipped=T.orient&&Math.random()<.72?sockSide:-sockSide; // 처음엔 대개 반대
-      state='play';flipA=1;flipping=0;wrongTries=0;led=0;lamp=0;latchA=0;passed={};said=false;doneT=0;
+      state='play';flipA=1;flipping=0;led=0;lamp=0;latchA=0;passed={};said=false;doneT=0;
       make(180-T.mw/2+randi(-60,60),FACE+120);
       api.actions(T.orient?[{id:'flip',label:'⇋ 뒤집기',onClick:flip}]:[]);
       api.hint(`${T.name}를 단자 아래에 맞추고 위로 꾹 밀어요`);
-    };
+      fx.focus(180,FACE);
+    }
     const correct=()=>!T.orient||flipped!==sockSide;
     function make(x,y){
       ins=api.Inserter({x,y,w:T.mw,h:T.ml,dir:-1,contactY:FACE,slotX,tol:Math.max(3,6-api.lv*.12),len:T.ml,
         minX:20,maxX:340-T.mw,damp:.4,
         press:correct()?{profile:T.prof,snapAt:T.snap}:{profile:p=>p<.1?.4:1,wallAt:T.wrong},
         onTouch(){sfx.tap()},
-        onCaught(){sfx.bump();buzz(10);api.hint('단자 입구에 안 맞아요. 옆으로 살짝')},
+        onCaught(){caught++;sfx.bump();buzz(10);api.hint('단자 입구에 안 맞아요. 옆으로 살짝')},
         onEnter(){sfx.tink();buzz(8);api.hint(correct()?'들어간다… 꾹':'들어가나…?')},
         onSlip(j,p,r,before){
           sfx.creak(clamp(r/1.7,.25,1.1));buzz(r>1.3?12:5);
@@ -53,8 +56,10 @@ DDAK.register({
           fx.seam(slotX-T.bw/2+T.mw/2,FACE,slotX+T.mw/2+T.bw/2,FACE);
           fx.text('딸깍!',180,FACE+170,{size:64,color:'#fff6c9'});
           setTimeout(()=>{sfx.chime()},220);
-          api.hint(T.lamp?'불이 켜졌어요':'연결됐어요');
-          api.complete('딸깍!',wrongTries?`${T.name}, ${wrongTries}번 막힌 끝에 딱 맞게 꽂았어요.`:`${T.name}, 한 번에 딱 맞는 방향으로 꽂았어요.`);
+          round++;
+          if(round>=ROUNDS){api.hint(T.lamp?'불이 켜졌어요':'전부 연결됐어요');
+            api.complete('딸깍!',wrongTries+caught?`플러그 ${ROUNDS}개 연결. 막히거나 걸린 건 ${wrongTries+caught}번.`:`플러그 ${ROUNDS}개를 전부 한 번에 꽂았어요.`,1500,wrongTries+caught)}
+          else{nextT=1.3;api.hint(`연결! 다음 플러그 (${round}/${ROUNDS})`)}
         },
         onPull(){if(state==='play'&&ins.press&&!ins.press.done){make(slotX,FACE+16);ins.down(...lastF);sfx.back();api.hint(correct()?'빠졌어요. 다시 꾹':'뺐어요. 뒤집어서 다시')}},
       });
@@ -83,6 +88,7 @@ DDAK.register({
       }
       if(ins.mode==='free'&&ins.contact)api.scrape(Math.min(.07,ins.slideV*.004),2300);
       if(ins.mode==='insert'){const P=ins.press;api.scrape(Math.min(.14,P.vel*.0033),600+P.p*1100)}
+      if(state==='done'&&nextT>0){nextT-=dt;if(nextT<=0){setup();return}}
       if(state==='done'){doneT+=dt;led=Math.min(1,led+dt*4);if(T.lamp)lamp=Math.min(1,lamp+dt*2.5);if(T.latch)latchA=Math.min(1,latchA+dt*8)}
       api.gauge(ins.mode==='insert'?`${T.name} · 깊이 ${Math.round(ins.press.p*100)}%`:state==='done'?`${T.name} · 연결됨`:`${T.name} · ${T.orient?(flipped>0?'오른쪽':'왼쪽')+' 면 위':'방향 상관없음'}`);
     };
@@ -93,14 +99,17 @@ DDAK.register({
       if(lamp){const r=ctx.createRadialGradient(180,120,10,180,120,320);r.addColorStop(0,`rgba(255,214,140,${.55*lamp})`);r.addColorStop(1,'rgba(255,214,140,0)');ctx.fillStyle=r;ctx.fillRect(0,0,360,560)}
       // 기기
       const devC=T.id==='power'?'#ece9e2':T.id==='lan'?'#f2f2f0':'#3b4046';
-      ctx.fillStyle='rgba(0,0,0,.35)';api.rr(ctx,34,34,300,FACE-24,22);ctx.fill();
-      ctx.fillStyle=devC;api.rr(ctx,30,26,300,FACE-26,22);ctx.fill();
+      api.mat.shadow(ctx,26,0,14,.55,()=>{ctx.fillStyle=devC;api.rr(ctx,30,26,300,FACE-26,22);ctx.fill()});
+      const dg=ctx.createLinearGradient(30,0,330,0);dg.addColorStop(0,'rgba(0,0,0,.22)');dg.addColorStop(.08,'rgba(255,255,255,.10)');dg.addColorStop(.5,'rgba(255,255,255,0)');dg.addColorStop(.94,'rgba(0,0,0,.08)');dg.addColorStop(1,'rgba(0,0,0,.3)');
+      ctx.fillStyle=dg;api.rr(ctx,30,26,300,FACE-26,22);ctx.fill();
+      const bt=ctx.createLinearGradient(0,FACE-40,0,FACE);bt.addColorStop(0,'rgba(0,0,0,0)');bt.addColorStop(1,'rgba(0,0,0,.28)');ctx.fillStyle=bt;api.rr(ctx,30,FACE-40,300,40,[0,0,22,22]);ctx.fill();
       ctx.fillStyle='rgba(255,255,255,.12)';api.rr(ctx,30,26,300,10,[22,22,0,0]);ctx.fill();
       ctx.fillStyle=T.id==='power'||T.id==='lan'?'rgba(0,0,0,.45)':'rgba(255,255,255,.55)';ctx.font='15px Jua, "Noto Sans KR", sans-serif';ctx.textAlign='left';
       ctx.fillText(T.dev,52,62);
       // LED
-      ctx.beginPath();ctx.arc(300,56,6,0,7);ctx.fillStyle=led?`rgba(80,230,150,${.4+.6*led})`:'rgba(0,0,0,.35)';ctx.fill();
-      if(led){ctx.shadowColor='#5ef0a4';ctx.shadowBlur=18*led;ctx.fill();ctx.shadowBlur=0}
+      for(let i=0;i<ROUNDS;i++){const on=i<round-(state==='done'?1:0)?1:(i===round-1&&state==='done'?led:0);
+        ctx.beginPath();ctx.arc(300-(ROUNDS-1-i)*18,56,5.5,0,7);ctx.fillStyle=on?`rgba(80,230,150,${.4+.6*on})`:'rgba(0,0,0,.35)';ctx.fill();
+        if(on){ctx.shadowColor='#5ef0a4';ctx.shadowBlur=18*on*api.stage.dpr;ctx.fill();ctx.shadowBlur=0}}
       if(T.lamp){ctx.beginPath();ctx.arc(180,110,26,0,7);ctx.fillStyle=lamp?`rgba(255,226,150,${.3+.7*lamp})`:'rgba(0,0,0,.12)';ctx.fill();
         if(lamp){ctx.shadowColor='#ffe08a';ctx.shadowBlur=40*lamp;ctx.fill();ctx.shadowBlur=0}}
       // 단자(단면)
@@ -132,8 +141,9 @@ DDAK.register({
       ctx.strokeStyle=T.id==='power'||T.id==='jack'?'#e8e6e0':'#2b2f33';ctx.lineWidth=T.id==='jack'?6:10;ctx.lineCap='round';
       ctx.beginPath();ctx.moveTo(cx,y+T.ml+T.bh-4);ctx.bezierCurveTo(cx,y+T.ml+T.bh+90,180+(cx-180)*.3,560,180,620);ctx.stroke();
       // 몸통
-      if(!ins.contact&&ins.mode==='free'){ctx.fillStyle='rgba(0,0,0,.3)';api.rr(ctx,cx-T.bw/2+8,y+T.ml+12,T.bw,T.bh,10);ctx.fill()}
-      ctx.fillStyle=T.body;api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill();
+      api.mat.shadow(ctx,ins.contact||ins.mode!=='free'?8:20,ins.contact||ins.mode!=='free'?2:8,ins.contact||ins.mode!=='free'?4:14,.5,()=>{ctx.fillStyle=T.body;api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill()});
+      const pg=ctx.createLinearGradient(cx-T.bw/2,0,cx+T.bw/2,0);pg.addColorStop(0,'rgba(0,0,0,.3)');pg.addColorStop(.2,'rgba(255,255,255,.22)');pg.addColorStop(.55,'rgba(255,255,255,0)');pg.addColorStop(1,'rgba(0,0,0,.35)');
+      ctx.fillStyle=pg;api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill();
       ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(cx-T.bw/2+3,y+T.ml+3,4,T.bh-12);
       ctx.fillStyle='rgba(0,0,0,.15)';for(let i=0;i<4;i++)ctx.fillRect(cx-T.bw/2+8,y+T.ml+T.bh-30+i*6,T.bw-16,2);
       // 금속부

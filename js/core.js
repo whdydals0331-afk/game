@@ -174,12 +174,45 @@ function Inserter(o){
   return s;
 }
 
+/* ---------------- 재질(텍스처) ---------------- */
+const texCache={};
+function seeded(s){s=s||1;return()=>{s=(s*16807)%2147483647;return s/2147483647}}
+function tex(key,w,h,fn){
+  const d=stage.dpr,k=key+'|'+w+'x'+h+'@'+d;
+  if(!texCache[k]){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w*d));c.height=Math.max(1,Math.ceil(h*d));const x=c.getContext('2d');x.scale(d,d);fn(x,w,h);texCache[k]=c}
+  return texCache[k];
+}
+const mat={
+  tex,seeded,
+  wood(w,h,{base='#d9ad74',dark='#8a5a2b',light='#f0d3a2',seed=7,vertical=false}={}){
+    return tex('wood'+base+seed+(vertical?'v':'h'),w,h,(x,w,h)=>{
+      const R=seeded(seed*9973+1),L=vertical?w:h,M=vertical?h:w;
+      x.fillStyle=base;x.fillRect(0,0,w,h);
+      for(let i=0;i<L;i++){const n=Math.sin(i*.09+R()*.4)*.5+Math.sin(i*.31)*.3+(R()-.5);x.globalAlpha=.05+.08*Math.abs(n);x.fillStyle=n>0?light:dark;vertical?x.fillRect(i,0,1,h):x.fillRect(0,i,w,1)}
+      x.strokeStyle=dark;
+      for(let i=0,n=Math.floor(L/4);i<n;i++){
+        const p0=R()*L,amp=1+R()*3.5,f=.006+R()*.02,ph=R()*6;x.lineWidth=.4+R()*.9;x.globalAlpha=.1+R()*.28;x.beginPath();
+        for(let m=0;m<=M+6;m+=6){const q=p0+Math.sin(m*f+ph)*amp+Math.sin(m*f*3.1+ph)*amp*.3;vertical?(m?x.lineTo(q,m):x.moveTo(q,m)):(m?x.lineTo(m,q):x.moveTo(m,q))}
+        x.stroke();
+      }
+      x.globalAlpha=.16;x.fillStyle=dark;for(let i=0;i<w*h/50;i++){const a=R()*w,b=R()*h;vertical?x.fillRect(a,b,.7,2+R()*4):x.fillRect(a,b,2+R()*5,.7)}
+      x.globalAlpha=1;
+    });
+  },
+  metal(ctx,x0,x1,stops=[[0,'#8f6d22'],[.18,'#e9cf7c'],[.4,'#b8922f'],[.62,'#fff0b8'],[.8,'#c29a35'],[1,'#7d5e1a']]){
+    const g=ctx.createLinearGradient(x0,0,x1,0);stops.forEach(([p,c])=>g.addColorStop(p,c));return g;
+  },
+  shade(hex,amt){const n=parseInt(hex.slice(1),16);return 'rgb('+[16,8,0].map(sft=>clamp((n>>sft&255)+amt,0,255)).join(',')+')'},
+  /* 부드러운 그림자: fn 안에서 그린 도형 아래로 그림자가 진다 */
+  shadow(ctx,blur,ox,oy,alpha,fn){const d=stage.dpr;ctx.save();ctx.shadowColor=`rgba(0,0,0,${alpha})`;ctx.shadowBlur=blur*d;ctx.shadowOffsetX=ox*d;ctx.shadowOffsetY=oy*d;fn();ctx.restore()},
+};
+
 /* ---------------- 무대 · 효과 ---------------- */
-const stage={cv:null,ctx:null,W:360,H:560,dpr:1,shakeAmt:0,slowT:0,slowF:1,parts:[],texts:[],seams:[],time:0};
+const stage={cv:null,ctx:null,W:360,H:560,dpr:1,flash:0,punch:0,px:180,py:280,shakeAmt:0,slowT:0,slowF:1,parts:[],texts:[],seams:[],time:0};
 function setupStage(W,H){
   stage.W=W;stage.H=H;stage.dpr=Math.min(window.devicePixelRatio||1,2);
   stage.cv.width=Math.round(W*stage.dpr);stage.cv.height=Math.round(H*stage.dpr);
-  stage.parts=[];stage.texts=[];stage.seams=[];stage.shakeAmt=0;stage.slowT=0;
+  stage.parts=[];stage.texts=[];stage.seams=[];stage.shakeAmt=0;stage.slowT=0;stage.flash=0;stage.punch=0;stage.px=W/2;stage.py=H/2;
   fitStage();
 }
 function fitStage(){
@@ -189,7 +222,9 @@ function fitStage(){
   stage.cv.style.width=Math.floor(stage.W*s)+'px';stage.cv.style.height=Math.floor(stage.H*s)+'px';
 }
 const fx={
-  shake(a){stage.shakeAmt=Math.max(stage.shakeAmt,a)},
+  /* 세게 흔들리는 순간(딱!)에는 화면이 번쩍하고 카메라가 살짝 당겨진다 */
+  shake(a){stage.shakeAmt=Math.max(stage.shakeAmt,a);if(a>=4){stage.flash=Math.max(stage.flash,Math.min(.3,a*.035));stage.punch=Math.max(stage.punch,Math.min(.045,a*.006))}},
+  focus(x,y){stage.px=x;stage.py=y},
   slow(dur,f){stage.slowT=dur;stage.slowF=f},
   burst(x,y,{n=14,colors=['#fff'],speed=120,life=.6,size=3,grav=200,up=0,spread=Math.PI*2,angle=0}={}){
     for(let i=0;i<n;i++){
@@ -239,14 +274,14 @@ function paintHome(){
   const list=$('#game-list');list.innerHTML='';
   games.forEach(g=>{
     const b=document.createElement('button');b.type='button';b.className='g-card';
-    b.innerHTML=`<span class="g-ico" style="--c:${g.color}">${g.icon}</span><span class="g-txt"><b>${g.name}</b><small>${g.desc}</small></span><span class="g-lv">${store.get('lv:'+g.id,1)}</span>`;
+    b.innerHTML=`<span class="g-ico" style="--c:${g.color}">${g.icon}</span><span class="g-txt"><b>${g.name}</b><small>${g.desc}</small></span><span class="g-lv"><i>${store.get('lv:'+g.id,1)}</i><em>★ ${Object.values(store.get('st:'+g.id,{})).reduce((a,b)=>a+b,0)}</em></span>`;
     b.setAttribute('aria-label',`${g.name}, ${store.get('lv:'+g.id,1)}단계`);
     b.addEventListener('click',()=>{ac();open(g)});
     list.appendChild(b);
   });
 }
 const api={
-  util,store,sfx,buzz,scrape,Press,Inserter,rr,fx,stage,
+  util,store,sfx,buzz,scrape,Press,Inserter,rr,fx,stage,mat,
   get lv(){return lv},
   hint(t){const h=$(current?.domId?'#'+current.domId+' .hint':'#play-hint');if(h&&h.textContent!==t)h.textContent=t},
   gauge(t){const g=$('#play-gauge');if(g.textContent!==t)g.textContent=t},
@@ -257,12 +292,16 @@ const api={
   },
   pulse(id){const b=$('#act-'+id);if(b){b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse')}},
   title(t){$(current?.domId?'#'+current.domId+' .t':'#play-title').textContent=t},
-  complete(title,sub,delay=1300){
+  complete(title,sub,delay=1300,miss=0){
     const done=lv,my=session;store.set('lv:'+current.id,done+1);
+    const stars=miss<=0?3:miss<=2?2:1,best=store.get('st:'+current.id,{});
+    if(!(best[done]>=stars)){best[done]=stars;store.set('st:'+current.id,best)}
     setTimeout(()=>{
       if(!inst||screenId==='home'||my!==session)return;
       $('#ov-title').textContent=title;$('#ov-sub').textContent=sub;
       $('#ov-lv').textContent=current.name+' · '+done+'단계';
+      $('#ov-stars').innerHTML='<b>'+'★'.repeat(stars)+'</b>'+'★'.repeat(3-stars);
+      $('#ov-note').textContent=stars===3?'실수 없이 한 번에':stars===2?'실수 '+miss+'번 · 한 번에 넣으면 별 셋':'실수 '+miss+'번 · 다시 하면 더 깔끔하게';
       $('#overlay').hidden=false;$('#ov-next').focus();
     },delay);
   }
@@ -291,8 +330,17 @@ function frame(t){
   ctx.clearRect(0,0,stage.W,stage.H);
   const a=stage.shakeAmt;stage.shakeAmt=a<.2?0:a*Math.exp(-dt*14);
   if(a)ctx.translate((Math.random()*2-1)*a,(Math.random()*2-1)*a);
+  const z=stage.punch;stage.punch=z<.002?0:z*Math.exp(-dt*9);
+  if(z){ctx.translate(stage.px,stage.py);ctx.scale(1+z,1+z);ctx.translate(-stage.px,-stage.py)}
   inst.draw(ctx,dt);
   drawEffects(ctx,dt);
+  // 마무리: 가장자리 어둡게 + 위쪽 조명, 그리고 번쩍
+  ctx.setTransform(stage.dpr,0,0,stage.dpr,0,0);
+  ctx.drawImage(tex('vignette',stage.W,stage.H,(x,w,h)=>{
+    const v=x.createRadialGradient(w/2,h*.45,Math.min(w,h)*.35,w/2,h/2,Math.max(w,h)*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.34)');x.fillStyle=v;x.fillRect(0,0,w,h);
+    const l=x.createLinearGradient(0,0,w*.6,h*.7);l.addColorStop(0,'rgba(255,248,230,.10)');l.addColorStop(1,'rgba(255,248,230,0)');x.fillStyle=l;x.fillRect(0,0,w,h);
+  }),0,0,stage.W,stage.H);
+  if(stage.flash>.01){ctx.fillStyle=`rgba(255,250,235,${stage.flash})`;ctx.fillRect(0,0,stage.W,stage.H);stage.flash*=Math.exp(-dt*10)}
   scrapeFrame();
 }
 function toLogical(e){const r=stage.cv.getBoundingClientRect();return [(e.clientX-r.left)*stage.W/r.width,(e.clientY-r.top)*stage.H/r.height]}

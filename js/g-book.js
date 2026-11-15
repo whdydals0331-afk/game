@@ -3,16 +3,16 @@
 const {clamp,rand,randi,lerp,pick,shuffle}=DDAK.util;
 const SHELF=300,DESK=548;
 const COLORS=['#c9584a','#3f6e8f','#d8a64a','#5b8a5f','#7a5c99','#2f4858','#b86b3c','#8a9aa6','#e3c9a8','#8c3b4a','#4f7d7a','#c98a9a'];
-const ROUNDS=3;
+const ROUNDS=4;
 
 DDAK.register({
   id:'book',name:'책꽂이',desc:'빈틈에 꼭 맞는 책을 골라 쑤욱 꽂아요',color:'#c9584a',W:360,H:560,
   icon:'<svg viewBox="0 0 24 24"><path d="M3 4h4v16H3zM7.5 6h4v14h-4zM15 4h3v16h-3zM12.5 20l-.5-11"/><path d="M2 20h20"/></svg>',
   create(api){
-    const {sfx,buzz,fx}=api;
+    const {sfx,buzz,fx,mat}=api;
     const g={};
-    let lv,round,books,gap,L,R,cands,active,ins,state,lean,wob,anim,contactY,said;
-    g.start=l=>{lv=l;round=0;newRound();api.actions([])};
+    let wrong=0,lv,round,books,gap,L,R,cands,active,ins,state,lean,wob,anim,contactY,said;
+    g.start=l=>{lv=l;round=0;wrong=0;newRound();api.actions([])};
     function newRound(){
       const gw=randi(24,32);books=[];let x=12,i=0;const gi=randi(3,6);
       while(x<348){
@@ -23,8 +23,9 @@ DDAK.register({
       L=books.find(b=>Math.abs(b.x+b.w-gap.x)<.5);R=books.find(b=>Math.abs(b.x-(gap.x+gap.w))<.5);
       contactY=SHELF-Math.min(L.h,R.h);
       const thick=Math.max(3,8-Math.floor(lv/2)),thin=Math.max(3,9-Math.floor(lv/2));
-      const kinds=shuffle([{k:'exact',w:gw},{k:'thick',w:gw+thick},{k:'thin',w:gw-thin}]);
-      cands=kinds.map((c,j)=>{const h=randi(150,182),cx=70+j*110;return {...c,h,c:pick(COLORS),band:Math.random()<.5,hx:cx-c.w/2,hy:DESK-h,x:cx-c.w/2,y:DESK-h}});
+      const list=[{k:'exact',w:gw},{k:'thick',w:gw+thick},{k:'thin',w:gw-thin}];if(lv>=3)list.push(Math.random()<.5?{k:'thick',w:gw+thick+3}:{k:'thin',w:gw-thin-3});
+      const kinds=shuffle(list),sp=360/kinds.length;
+      cands=kinds.map((c,j)=>{const h=randi(150,182),cx=sp/2+j*sp;return {...c,h,c:pick(COLORS),band:Math.random()<.5,hx:cx-c.w/2,hy:DESK-h,x:cx-c.w/2,y:DESK-h}});
       active=null;ins=null;state='pick';lean=0;wob=0;anim=null;said=false;
       api.hint(round?'다음 빈틈이에요. 딱 맞는 책을 골라요':'빈틈에 꼭 맞을 것 같은 책을 골라 위로 끌어 올려요');
       api.gauge(`빈틈 ${(gw*.6).toFixed(1)}mm`);
@@ -46,7 +47,7 @@ DDAK.register({
           sfx.creak(clamp(r/1.5,.3,1.1));buzz(r>1.1?11:5);
           if(c.k==='exact'&&p>.45&&!said){said=true;api.hint('양옆 책이 밀려나요… 조금만 더')}
         },
-        onWall(){sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요')},
+        onWall(){wrong++;sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요')},
         onSnapStart(){fx.slow(.25,.33)},
         onSnap(){
           state='snapped';sfx.thunk(.85);buzz([30,40,60]);fx.shake(5);wob=1;
@@ -55,7 +56,7 @@ DDAK.register({
           fx.text('쑤욱!',180,140,{size:62,color:'#fff6c9'});
           setTimeout(()=>sfx.chime(),250);
           round++;api.hint(round>=ROUNDS?'책꽂이가 꽉 찼어요':'딱 맞았어요!');
-          if(round>=ROUNDS)api.complete('꽉 찼어요',`빈틈 ${ROUNDS}곳에 꼭 맞는 책만 골라 꽂았어요.`);
+          if(round>=ROUNDS)api.complete('꽉 찼어요',`빈틈 ${ROUNDS}곳에 꼭 맞는 책을 꽂았어요.${wrong?` 안 맞는 책을 ${wrong}번 골랐어요.`:''}`,1300,wrong);
           else setTimeout(()=>{if(state==='snapped')newRound()},1300);
         },
         onRelease(mode){
@@ -73,7 +74,7 @@ DDAK.register({
       const c=active;anim={c,fx:ins.x,fy:ins.y,t:0,dur:.35,spring:true};state='anim';
     }
     function loose(){
-      state='loose';anim={t:0};sfx.tonk();buzz(20);api.hint('헐렁해요… 딱 맞는 책이 아니에요');
+      state='loose';wrong++;anim={t:0};sfx.tonk();buzz(20);api.hint('헐렁해요… 딱 맞는 책이 아니에요');
     }
     g.down=(x,y)=>{
       if(state==='drag'||state==='insert'){ins.down(x,y);return}
@@ -115,43 +116,52 @@ DDAK.register({
     function drawBook(ctx,b,x,y,ang,pivotX){
       ctx.save();
       if(ang){ctx.translate(pivotX,SHELF);ctx.rotate(ang);ctx.translate(-pivotX,-SHELF)}
-      ctx.fillStyle=b.c;api.rr(ctx,x,y,b.w,b.h,[3,3,1,1]);ctx.fill();
-      ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(x+2,y+2,3,b.h-4);
-      ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(x+b.w-3,y+2,3,b.h-4);
-      ctx.fillStyle='rgba(255,240,200,.45)';
-      ctx.fillRect(x+3,y+16,b.w-6,3);ctx.fillRect(x+3,y+b.h-24,b.w-6,3);
-      if(b.band){ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(x+3,y+b.h*.38,b.w-6,b.h*.16)}
-      else{ctx.fillStyle='rgba(255,240,200,.35)';ctx.fillRect(x+b.w/2-1.5,y+34,3,b.h*.35)}
+      // 책등: 둥글게 말린 느낌
+      const q=ctx.createLinearGradient(x,0,x+b.w,0);q.addColorStop(0,mat.shade(b.c,-48));q.addColorStop(.16,mat.shade(b.c,22));q.addColorStop(.5,b.c);q.addColorStop(.86,mat.shade(b.c,-20));q.addColorStop(1,mat.shade(b.c,-62));
+      ctx.fillStyle=q;api.rr(ctx,x,y,b.w,b.h,[4,4,1,1]);ctx.fill();
+      ctx.globalAlpha=.08;ctx.fillStyle='#000';for(let yy=y+2;yy<y+b.h;yy+=2)ctx.fillRect(x,yy,b.w,.6);ctx.globalAlpha=1;
+      // 금박
+      const gold=mat.metal(ctx,x,x+b.w,[[0,'#8a6a25'],[.4,'#f6e3a1'],[1,'#9c7a2c']]);
+      ctx.fillStyle=gold;ctx.fillRect(x+2,y+14,b.w-4,2);ctx.fillRect(x+2,y+19,b.w-4,1);ctx.fillRect(x+2,y+b.h-22,b.w-4,2);ctx.fillRect(x+2,y+b.h-17,b.w-4,1);
+      if(b.band){ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+b.h*.36,b.w-2,b.h*.18);ctx.fillStyle=gold;ctx.fillRect(x+b.w/2-.8,y+b.h*.39,1.6,b.h*.12)}
+      else{ctx.fillStyle=gold;ctx.globalAlpha=.85;for(let i=0;i<5;i++)ctx.fillRect(x+b.w/2-1,y+34+i*9,2,6);ctx.globalAlpha=1}
+      ctx.fillStyle='#efe6d2';ctx.fillRect(x+2,y-2,b.w-4,3);
       ctx.restore();
     }
     g.draw=ctx=>{
-      ctx.fillStyle='#dde4e8';ctx.fillRect(0,0,360,560);
-      ctx.fillStyle='rgba(255,255,255,.35)';for(let x=0;x<360;x+=36)ctx.fillRect(x,0,14,SHELF+20);
+      // 벽 + 책장 뒤판
+      ctx.drawImage(mat.tex('bookwall',360,560,(x,w,h)=>{
+        const bg=x.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#e8e1d4');bg.addColorStop(1,'#cfc5b4');x.fillStyle=bg;x.fillRect(0,0,w,h);
+        const R=mat.seeded(5);for(let i=0;i<5000;i++){x.fillStyle=R()<.5?'rgba(255,255,255,.07)':'rgba(90,70,40,.04)';x.fillRect(R()*w,R()*h,1.4,1.4)}
+      }),0,0,360,560);
+      ctx.drawImage(mat.wood(360,SHELF-60,{base:'#5b3d27',dark:'#24130a',light:'#7d5a3c',seed:21,vertical:true}),0,60,360,SHELF-60);
+      const dk=ctx.createLinearGradient(0,60,0,SHELF);dk.addColorStop(0,'rgba(0,0,0,.55)');dk.addColorStop(.5,'rgba(0,0,0,.25)');dk.addColorStop(1,'rgba(0,0,0,.5)');ctx.fillStyle=dk;ctx.fillRect(0,60,360,SHELF-60);
+      ctx.drawImage(mat.wood(360,14,{base:'#a8744a',dark:'#5a3317',light:'#d6a878',seed:23}),0,48,360,14);
       // 책들
       books.forEach(b=>{
         let a=0,pv=0;
         if(b===L){a=-lean*Math.PI/180;pv=b.x}else if(b===R){a=lean*Math.PI/180;pv=b.x+b.w}
         drawBook(ctx,b,b.x,SHELF-b.h,a,pv);
       });
-      // 빈틈 그림자
-      if(state!=='snapped'){ctx.fillStyle='rgba(30,25,20,.18)';ctx.fillRect(gap.x,contactY+6,gap.w,SHELF-contactY-6)}
       // 선반
-      ctx.fillStyle='#9b6a3f';ctx.fillRect(0,SHELF,360,16);ctx.fillStyle='#b98250';ctx.fillRect(0,SHELF,360,4);
-      ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(0,SHELF+16,360,6);
+      mat.shadow(ctx,14,0,8,.45,()=>{ctx.fillStyle='#7a5231';ctx.fillRect(0,SHELF,360,18)});
+      ctx.drawImage(mat.wood(360,18,{base:'#b07a4c',dark:'#5a3317',light:'#e0b486',seed:29}),0,SHELF,360,18);
+      ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(0,SHELF,360,1.5);ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(0,SHELF+15,360,3);
       // 책상과 후보 책
-      ctx.fillStyle='#cfb08a';ctx.fillRect(0,DESK,360,12);ctx.fillStyle='#e1c59f';ctx.fillRect(0,DESK,360,3);
+      ctx.drawImage(mat.wood(360,14,{base:'#c9a274',dark:'#7a5230',light:'#ecd0a6',seed:31}),0,DESK,360,14);
+      ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(0,DESK,360,1.5);
       cands.forEach(c=>{
         if(c===active)return;
-        ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(c.x+4,c.y+6,c.w,c.h-6);
+        mat.shadow(ctx,10,4,4,.35,()=>{ctx.fillStyle='#000';ctx.fillRect(c.x+1,c.y+2,c.w-2,c.h-2)});
         drawBook(ctx,c,c.x,c.y,0,0);
-        ctx.fillStyle='rgba(40,40,40,.55)';ctx.font='11px "Noto Sans KR",sans-serif';ctx.textAlign='center';
+        ctx.fillStyle='rgba(50,40,30,.7)';ctx.font='11px "Noto Sans KR",sans-serif';ctx.textAlign='center';
         ctx.fillText((c.w*.6).toFixed(1)+'mm',c.x+c.w/2,DESK-c.h-8);
       });
       if(active){
         let tilt=ins&&ins.mode==='free'?ins.tilt*.05:0;
         if(state==='loose'){tilt=Math.sin(Math.min(1,anim.t*3)*Math.PI/2)*.12*(1-Math.max(0,anim.t-.7))}
         const P=ins&&ins.press,tr=P&&active.k==='exact'?(Math.random()-.5)*P.strain*1.4:0;
-        if(ins&&ins.mode==='free'&&!ins.contact){ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(active.x+8,active.y+12,active.w,active.h)}
+        if(ins&&ins.mode==='free'&&!ins.contact)mat.shadow(ctx,18,8,14,.4,()=>{ctx.fillStyle='#000';ctx.fillRect(active.x+1,active.y+2,active.w-2,active.h-2)});
         drawBook(ctx,active,active.x+tr,active.y,tilt,active.x+active.w/2);
       }
     };

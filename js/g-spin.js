@@ -23,7 +23,7 @@ DDAK.register({
   id:'spin',name:'빙글 쏙',desc:'돌고 있는 조각을 딱 맞는 순간에 톡',color:'#a46ad1',W:360,H:560,
   icon:'<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/><path d="M20 3a3 3 0 0 1 1 3"/></svg>',
   create(api){
-    const {sfx,buzz,fx}=api;
+    const {sfx,buzz,fx,mat}=api;
     const g={};
     let lv,sh,hole,ang,omega,t,state,h,err,grindT,wob,results,stT,pt,inT,perfTol,grindTol,miss,sinkA,nextAt;
     g.start=L=>{lv=L;results=[];miss=0;newShape();api.actions([])};
@@ -90,36 +90,44 @@ DDAK.register({
     function finishLevel(){
       state='end';
       const perf=results.filter(r=>r===2).length;
-      api.complete(perf===PER?'전부 쏙!':'다 넣었어요',`${PER}개 중 ${perf}개는 한 번에 쏙, ${PER-perf}개는 걸렸다가 쑥.${miss?` 튕겨 나간 건 ${miss}번.`:''}`,400);
+      api.complete(perf===PER?'전부 쏙!':'다 넣었어요',`${PER}개 중 ${perf}개는 한 번에 쏙, ${PER-perf}개는 걸렸다가 쑥.${miss?` 튕겨 나간 건 ${miss}번.`:''}`,400,miss+Math.floor((PER-perf)/2));
     }
     const rotP=([x,y],a)=>[x*Math.cos(a)-y*Math.sin(a),x*Math.sin(a)+y*Math.cos(a)];
     function path(ctx,pts,a,s){ctx.beginPath();pts.forEach((p,i)=>{const [x,y]=rotP(p,a);i?ctx.lineTo(CX+x*s,CY+y*s):ctx.moveTo(CX+x*s,CY+y*s)});ctx.closePath()}
     g.draw=ctx=>{
+      const dpr=api.stage.dpr;
       // 돌판
-      const bg=ctx.createRadialGradient(CX,CY-40,40,CX,CY,420);bg.addColorStop(0,'#e9e4da');bg.addColorStop(1,'#c9c1b3');
-      ctx.fillStyle=bg;ctx.fillRect(0,0,360,560);
-      ctx.fillStyle='rgba(90,80,60,.06)';for(let i=0;i<60;i++){ctx.beginPath();ctx.arc((i*97)%360,(i*173)%560,(i%5)+1,0,7);ctx.fill()}
+      ctx.drawImage(mat.tex('slab',360,560,(x,w,h)=>{
+        const bg=x.createRadialGradient(130,170,30,180,300,470);bg.addColorStop(0,'#f3efe8');bg.addColorStop(1,'#b5ad9f');x.fillStyle=bg;x.fillRect(0,0,w,h);
+        const R=mat.seeded(77);
+        for(let i=0;i<9000;i++){x.fillStyle=R()<.5?'rgba(255,255,255,.10)':'rgba(60,50,40,.07)';x.fillRect(R()*w,R()*h,1+R()*1.6,1+R()*1.6)}
+        x.strokeStyle='rgba(110,95,80,.14)';
+        for(let i=0;i<8;i++){x.lineWidth=.5+R();x.beginPath();let a=R()*w,b=0;x.moveTo(a,b);while(b<h){a+=(R()-.5)*46;b+=18+R()*30;x.lineTo(a,b)}x.stroke()}
+      }),0,0,360,560);
       // 진행 점
       for(let i=0;i<PER;i++){const x=180+(i-(PER-1)/2)*26,r=results[i];ctx.beginPath();ctx.arc(x,40,8,0,7);
-        ctx.fillStyle=r===2?'#e2a92b':r===1?'#4f9b85':'rgba(0,0,0,.12)';ctx.fill()}
-      // 구멍
-      const holeA=state==='sink'?1-sinkA*.0:1;
-      ctx.save();path(ctx,sh.pts.map(([x,y])=>[x*1.012,y*1.012]),hole,1);ctx.fillStyle='#2a2520';ctx.globalAlpha=holeA;ctx.fill();
-      ctx.clip();ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,360,CY-40);ctx.restore();ctx.globalAlpha=1;
-      path(ctx,sh.pts.map(([x,y])=>[x*1.012,y*1.012]),hole,1);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle=r===2?'#e2a92b':r===1?'#4f9b85':'rgba(0,0,0,.14)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.stroke()}
+      // 구멍: 벽이 보이는 깊이감
+      const HP=sh.pts.map(([x,y])=>[x*1.012,y*1.012]);
+      ctx.save();path(ctx,HP,hole,1);ctx.fillStyle='#57493c';ctx.fill();ctx.clip();
+      ctx.translate(8,13);path(ctx,HP,hole,1);ctx.fillStyle='#14100c';ctx.fill();ctx.restore();
+      path(ctx,HP,hole,1);ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1.2;ctx.stroke();
       // 조각
-      const s=1+Math.max(0,h)*.32+(h<0?h*.25:0);
-      const wobA=state==='rim'?wob*Math.PI/180:0;
-      if(h>0){
-        ctx.save();ctx.translate(10+h*22,12+h*30);ctx.globalAlpha=.22+.1*(1-h);ctx.filter=`blur(${2+h*6}px)`;path(ctx,sh.pts,ang+wobA,s);ctx.fillStyle='#000';ctx.fill();ctx.restore();
-        ctx.filter='none';
-      }
-      ctx.save();path(ctx,sh.pts,ang+wobA,s);
-      const gr=ctx.createLinearGradient(CX-90,CY-90,CX+90,CY+90);gr.addColorStop(0,shade(sh.c,30));gr.addColorStop(1,shade(sh.c,-20));
-      ctx.fillStyle=gr;ctx.fill();
-      ctx.lineWidth=3;ctx.strokeStyle=state==='sink'?`rgba(255,255,255,${.5*(1-sinkA)+.12})`:'rgba(255,255,255,.45)';ctx.stroke();
-      ctx.restore();
-      if(state==='sink'&&sinkA>=1&&stT<.6){path(ctx,sh.pts,hole,1.012);ctx.strokeStyle=`rgba(255,246,201,${1-stT/.6})`;ctx.lineWidth=4;ctx.shadowColor='#fff6c9';ctx.shadowBlur=16;ctx.stroke();ctx.shadowBlur=0}
+      const s=1+Math.max(0,h)*.32+(h<0?h*.25:0),hh=Math.max(0,h);
+      const a=ang+(state==='rim'?wob*Math.PI/180:0);
+      ctx.save();
+      ctx.shadowColor=`rgba(0,0,0,${.28+.2*(1-hh)})`;ctx.shadowBlur=(4+hh*30)*dpr;ctx.shadowOffsetX=(2+hh*22)*dpr;ctx.shadowOffsetY=(3+hh*32)*dpr;
+      path(ctx,sh.pts,a,s);
+      const side=ctx.createLinearGradient(CX-90,CY-90,CX+90,CY+90);side.addColorStop(0,shade(sh.c,-10));side.addColorStop(1,shade(sh.c,-70));
+      ctx.fillStyle=side;ctx.fill();ctx.restore();
+      // 윗면(모따기 안쪽)
+      path(ctx,sh.pts,a,s*.9);
+      const top=ctx.createLinearGradient(CX-80,CY-90,CX+70,CY+90);top.addColorStop(0,shade(sh.c,55));top.addColorStop(.5,shade(sh.c,8));top.addColorStop(1,shade(sh.c,-22));
+      ctx.fillStyle=top;ctx.fill();
+      ctx.save();path(ctx,sh.pts,a,s*.9);ctx.clip();
+      ctx.translate(CX,CY);ctx.rotate(-.6);ctx.fillStyle='rgba(255,255,255,.16)';ctx.fillRect(-140,-34,280,16);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(-140,-8,280,6);ctx.restore();
+      path(ctx,sh.pts,a,s);ctx.lineWidth=1.5;ctx.strokeStyle=state==='sink'?`rgba(255,255,255,${.45*(1-sinkA)+.1})`:'rgba(255,255,255,.4)';ctx.stroke();
+      if(state==='sink'&&sinkA>=1&&stT<.6){path(ctx,sh.pts,hole,1.012);ctx.strokeStyle=`rgba(255,246,201,${1-stT/.6})`;ctx.lineWidth=4;ctx.shadowColor='#fff6c9';ctx.shadowBlur=16*dpr;ctx.stroke();ctx.shadowBlur=0}
     };
     function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)+amt,g2=(n>>8&255)+amt,b=(n&255)+amt;r=clamp(r,0,255);g2=clamp(g2,0,255);b=clamp(b,0,255);return `rgb(${r},${g2},${b})`}
     g._dbg=()=>({state,ang,hole,sh,results});
