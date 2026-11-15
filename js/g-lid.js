@@ -98,7 +98,7 @@ DDAK.register({
       ctx.save();ctx.translate(lid.x,lid.y);ctx.scale(s,s);
       if(!lid.seated){ctx.fillStyle='rgba(0,0,0,.2)';api.rr(ctx,-hw+10,-hh+16,C.w,C.h,26);ctx.fill()}
       ctx.fillStyle='rgba(120,190,205,.55)';api.rr(ctx,-hw,-hh,C.w,C.h,26);ctx.fill();
-      ctx.strokeStyle='rgba(70,140,160,.9)';ctx.lineWidth=4;ctx.stroke();
+      ctx.strokeStyle='rgb(92,158,176)';ctx.lineWidth=4;ctx.stroke();
       ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;api.rr(ctx,-hw+14,-hh+14,C.w-28,C.h-28,18);ctx.stroke();
       ctx.restore();
       flaps.forEach(f=>drawFlap(ctx,f,false));
@@ -110,9 +110,9 @@ DDAK.register({
       ctx.save();ctx.translate(CX+tr,CY);
       const rot={top:0,right:Math.PI/2,bottom:Math.PI,left:-Math.PI/2}[f.s];ctx.rotate(rot);
       const edge=(f.s==='top'||f.s==='bottom')?hh:hw,half=f.s==='top'||f.s==='bottom'?44:34;
-      if(under&&p<.5){ctx.fillStyle=f.done?'#3f8f7a':'#5a9fb0';api.rr(ctx,-half,-edge-out,half*2,out+4,8);ctx.fill();
+      if(under&&p<.5){ctx.fillStyle='rgb(92,158,176)';api.rr(ctx,-half,-edge-out,half*2,out+4,8);ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-half+10,-edge-out+8,half*2-20,4)}
-      if(!under&&p>=.5){ctx.fillStyle=f.done?'#3f8f7a':'#5a9fb0';api.rr(ctx,-half,-edge-4,half*2,inn+4,8);ctx.fill();
+      if(!under&&p>=.5){ctx.fillStyle='rgb(92,158,176)';api.rr(ctx,-half,-edge-4,half*2,inn+4,8);ctx.fill();
         ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(-half+10,-edge+inn-6,half*2-20,3)}
       if(!under&&p<.5&&lid.seated&&!f.done){ctx.strokeStyle=`rgba(255,211,107,${.5+.4*Math.sin(t*6)})`;ctx.lineWidth=2;api.rr(ctx,-half-3,-edge-out-3,half*2+6,out+10,10);ctx.stroke()}
       ctx.restore();
@@ -161,7 +161,7 @@ DDAK.register({
       const R=118,a=ang*Math.PI/180,tr=jarP&&!jarP.done?(Math.random()-.5)*jarP.strain*.02:0;
       // 병 몸통(유리)
       ctx.fillStyle='rgba(0,0,0,.12)';ctx.beginPath();ctx.arc(CX+8,CY+14,R+12,0,7);ctx.fill();
-      ctx.fillStyle='rgba(205,40,60,.55)';ctx.beginPath();ctx.arc(CX,CY,R+12,0,7);ctx.fill();
+      ctx.fillStyle='#c0922b';ctx.beginPath();ctx.arc(CX,CY,R+12,0,7);ctx.fill();
       ctx.save();ctx.translate(CX,CY);ctx.rotate(a+tr);
       // 뚜껑
       const gr=ctx.createRadialGradient(-30,-40,10,0,0,R);gr.addColorStop(0,'#f1d27b');gr.addColorStop(1,'#c99a2e');

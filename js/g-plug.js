@@ -132,16 +132,17 @@ DDAK.register({
       }else if(T.id==='c'){ctx.fillStyle='#4a4f55';ctx.fillRect(x+7,top+4,T.mw-14,T.ml-14)}
       else if(T.id==='jack'){ctx.fillStyle='#3a3f45';ctx.fillRect(x+1,top+T.ml*.3,2,8);ctx.fillRect(x+T.mw-3,top+T.ml*.6,2,8)}
     }
+    const devColor=()=>T.id==='power'?'#ece9e2':T.id==='lan'?'#f2f2f0':'#3b4046';
     function drawPlug(ctx){
       const P=ins.press,tr=P&&!P.done?(Math.random()-.5)*P.strain*1.6:0;
       const x=ins.x+tr,y=ins.y,cx=x+T.mw/2;
       ctx.save();
       ctx.translate(cx,y+T.ml);ctx.rotate(ins.tilt*.06);ctx.scale(flipA,1);ctx.translate(-cx,-(y+T.ml));
       // 케이블
-      ctx.strokeStyle=T.id==='power'||T.id==='jack'?'#e8e6e0':'#2b2f33';ctx.lineWidth=T.id==='jack'?6:10;ctx.lineCap='round';
+      ctx.strokeStyle=devColor();ctx.lineWidth=T.id==='jack'?6:10;ctx.lineCap='round';
       ctx.beginPath();ctx.moveTo(cx,y+T.ml+T.bh-4);ctx.bezierCurveTo(cx,y+T.ml+T.bh+90,180+(cx-180)*.3,560,180,620);ctx.stroke();
       // 몸통
-      api.mat.shadow(ctx,ins.contact||ins.mode!=='free'?8:20,ins.contact||ins.mode!=='free'?2:8,ins.contact||ins.mode!=='free'?4:14,.5,()=>{ctx.fillStyle=T.body;api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill()});
+      api.mat.shadow(ctx,ins.contact||ins.mode!=='free'?8:20,ins.contact||ins.mode!=='free'?2:8,ins.contact||ins.mode!=='free'?4:14,.5,()=>{ctx.fillStyle=devColor();api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill()});
       const pg=ctx.createLinearGradient(cx-T.bw/2,0,cx+T.bw/2,0);pg.addColorStop(0,'rgba(0,0,0,.3)');pg.addColorStop(.2,'rgba(255,255,255,.22)');pg.addColorStop(.55,'rgba(255,255,255,0)');pg.addColorStop(1,'rgba(0,0,0,.35)');
       ctx.fillStyle=pg;api.rr(ctx,cx-T.bw/2,y+T.ml,T.bw,T.bh,[6,6,12,12]);ctx.fill();
       ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(cx-T.bw/2+3,y+T.ml+3,4,T.bh-12);

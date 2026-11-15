@@ -108,3 +108,8 @@ h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
 .toast b{font-size:26px;letter-spacing:4px;color:var(--star);font-weight:400;line-height:1.1}
 .toast b i{font-style:normal;color:var(--wall-edge)}
 .toast span{font-family:var(--display);font-size:18px}
+
+/* 빈칸 채우기: 조각은 판과 같은 타일 */
+.cell.joined{animation:pop .32s cubic-bezier(.3,1.6,.5,1)}
+.piece .pc,.floating .pc{box-shadow:0 0 0 1px var(--wall-edge)}
+.piece .pc::after,.floating .pc::after{content:"";position:absolute;inset:3px;border-radius:4px;background:var(--card);opacity:.35}

@@ -14,18 +14,18 @@ DDAK.register({
     let wrong=0,lv,round,books,gap,L,R,cands,active,ins,state,lean,wob,anim,contactY,said;
     g.start=l=>{lv=l;round=0;wrong=0;newRound();api.actions([])};
     function newRound(){
-      const gw=randi(24,32);books=[];let x=12,i=0;const gi=randi(3,6);
+      const setC=pick(COLORS);const gw=randi(24,32);books=[];let x=12,i=0;const gi=randi(3,6);
       while(x<348){
         if(i===gi){gap={x,w:gw};x+=gw;i++;continue}
         const w=randi(16,32);if(x+w>348){if(books.length)books[books.length-1].w+=348-x;break}
-        books.push({x,w,h:randi(140,186),c:pick(COLORS),band:Math.random()<.5});x+=w;i++;
+        books.push({x,w,h:172,c:setC,band:false});x+=w;i++;
       }
       L=books.find(b=>Math.abs(b.x+b.w-gap.x)<.5);R=books.find(b=>Math.abs(b.x-(gap.x+gap.w))<.5);
       contactY=SHELF-Math.min(L.h,R.h);
       const thick=Math.max(3,8-Math.floor(lv/2)),thin=Math.max(3,9-Math.floor(lv/2));
       const list=[{k:'exact',w:gw},{k:'thick',w:gw+thick},{k:'thin',w:gw-thin}];if(lv>=3)list.push(Math.random()<.5?{k:'thick',w:gw+thick+3}:{k:'thin',w:gw-thin-3});
       const kinds=shuffle(list),sp=360/kinds.length;
-      cands=kinds.map((c,j)=>{const h=randi(150,182),cx=sp/2+j*sp;return {...c,h,c:pick(COLORS),band:Math.random()<.5,hx:cx-c.w/2,hy:DESK-h,x:cx-c.w/2,y:DESK-h}});
+      cands=kinds.map((c,j)=>{const h=172,cx=sp/2+j*sp;return {...c,h,c:setC,band:false,hx:cx-c.w/2,hy:DESK-h,x:cx-c.w/2,y:DESK-h}});
       active=null;ins=null;state='pick';lean=0;wob=0;anim=null;said=false;
       api.hint(round?'다음 빈틈이에요. 딱 맞는 책을 골라요':'꼭 맞을 것 같은 책을 골라 빈틈 입구에 대면 쏘옥 들어가요');
       api.gauge(`빈틈 ${(gw*.6).toFixed(1)}mm`);

@@ -8,7 +8,7 @@ const PIECES=[
   [[0,0],[1,0],[2,0],[2,1]],[[0,1],[1,1],[2,1],[2,0]],[[0,0],[0,1],[1,1],[1,2]],[[1,0],[1,1],[0,1],[0,2]],[[0,0],[1,0],[1,1],[2,1]],
   [[0,1],[1,0],[1,1],[1,2],[2,1]],[[0,0],[0,1],[0,2],[1,0],[2,0]],[[0,0],[1,0],[1,1],[1,2],[0,2]],[[0,0],[0,1],[0,2],[1,2],[1,1]]
 ];
-const COLORS=['#f2a07b','#7fb8dd','#a9d47f','#f6c45a','#b79ad6','#ef9fc4','#6fc7b6','#f08a8a'];
+const COLORS=['var(--wall)'];
 const key=(r,c)=>r+','+c;
 const dims=sh=>({h:Math.max(...sh.map(c=>c[0]))+1,w:Math.max(...sh.map(c=>c[1]))+1});
 const $=s=>document.querySelector(s);
@@ -56,8 +56,7 @@ DDAK.register({
       const holeAt=new Map();B.holes.forEach(h=>h.keys.forEach(k=>holeAt.set(k,h)));B.cellEls=new Map();
       for(let r=0;r<n;r++)for(let c=0;c<n;c++){
         const d=document.createElement('div'),h=holeAt.get(key(r,c));
-        d.className='cell '+(h?(h.filled?'filled':'hole'):'wall');
-        if(h&&h.filled){d.style.background=h.color;d.style.animation='none'}
+        d.className='cell '+(h&&!h.filled?'hole':'wall');
         Object.assign(d.style,{left:c*cs+gap/2+'px',top:r*cs+gap/2+'px',width:cs-gap+'px',height:cs-gap+'px'});
         d.dataset.rc=r+c;b.appendChild(d);B.cellEls.set(key(r,c),d);
       }
@@ -98,8 +97,8 @@ DDAK.register({
         d.fl.classList.add('settle');d.fl.style.transform=`translate(${br.left+d.c0*B.cell}px,${br.top+d.r0*B.cell}px)`;
         setTimeout(()=>{
           d.fl.remove();h.filled=true;h.color=d.p.color;d.p.used=true;d.el.remove();sfx.thunk(.7);buzz(18);
-          h.keys.forEach(k=>{const c=B.cellEls.get(k);c.className='cell filled';c.style.background=h.color});
-          sparks(br.left+d.c0*B.cell+d.w/2,br.top+d.r0*B.cell+d.h/2,[h.color,'#ffd36b','#ffffff'],12,50);
+          h.keys.forEach(k=>{const c=B.cellEls.get(k);c.className='cell wall joined'});
+          sparks(br.left+d.c0*B.cell+d.w/2,br.top+d.r0*B.cell+d.h/2,['#ffd36b','#ffffff'],12,50);
           const left=B.holes.filter(x=>!x.filled).length;
           api.hint(left?['딱!','쏙!','좋아요','완벽해요'][randi(0,3)]+' 남은 자리 '+left+'개':'다 채웠어요');
           if(!left){B.cellEls.forEach(c=>{c.style.animationDelay=(+c.dataset.rc*45)+'ms';c.classList.add('wave')});setTimeout(()=>sfx.win(),200);buzz([10,60,20]);
