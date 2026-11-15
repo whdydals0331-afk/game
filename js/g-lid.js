@@ -24,7 +24,7 @@ DDAK.register({
         api.hint('뚜껑을 끌어서 통 위에 딱 맞게 얹어요');api.gauge('뚜껑 얹기');
       }else{
         ang=0;fingA=null;jarP=null;tickAcc=0;btn=0;label=['딸기잼','블루베리','사과잼','유자청','땅콩버터'][randi(0,4)];
-        api.hint('뚜껑을 시계 방향으로 빙글빙글 돌려 잠가요');api.gauge('0° / 330°');
+        api.hint('뚜껑을 시계 방향으로 돌려요. 나사산에 걸리면 스르륵 잠겨요');api.gauge('0° / 330°');
       }
     };
     // ---------- 용기 ----------
@@ -43,8 +43,8 @@ DDAK.register({
       const f=flaps.find(f=>{if(f.done)return false;const r=flapRect(f);return x>r.x-14&&x<r.x+r.w+14&&y>r.y-14&&y<r.y+r.h+14});
       if(f){
         active=f;sfx.tap();
-        if(!f.P)f.P=api.Press({len:30,jump:2.3,profile:p=>p<.25?.6:p<.72?1.35:.45,snapAt:.86,T:2.2,
-          onSlip(j,p,r){sfx.creak(clamp(r/1.4,.3,1));buzz(r>1.1?9:4);if(r>1.1)api.hint('꾹… 버티지 마라…')},
+        if(!f.P)sfx.suck(),f.P=api.Press({auto:true,v0:.9,v1:3,len:30,jump:2.3,profile:p=>p<.25?.6:p<.72?1.35:.45,snapAt:.86,T:2.2,
+          onSlip(){buzz(4)},
           onSnapStart(){fx.slow(.15,.35)},
           onSnap(){
             f.done=true;active=null;sfx.click(1.2);sfx.thunk(.35);buzz([25,30,40]);fx.shake(3.5);
@@ -70,7 +70,7 @@ DDAK.register({
           lid.seated=true;drag=null;lid.fromX=lid.x;lid.fromY=lid.y;lid.seatT=0;
           sfx.thunk(.4);sfx.whoosh();buzz([15,20,25]);fx.shake(2.5);
           for(let i=0;i<4;i++)fx.burst(CX+(i%2?1:-1)*C.w/2,CY+(i<2?-1:1)*C.h/2,{n:6,colors:['rgba(255,255,255,.9)'],speed:90,size:3,grav:0,life:.4});
-          api.hint('푹! 이제 날개를 하나씩 꾹 눌러요 (꾹 누르고 있기)');
+          api.hint('푹! 이제 날개를 하나씩 톡 눌러요');
         }else if(d<50){api.scrape(.03,1200)}
       }
     }
@@ -130,8 +130,8 @@ DDAK.register({
         if(tickAcc>24){tickAcc=0;sfx.creak(.2);buzz(3)}
         api.scrape(Math.min(.08,Math.abs(ang-before)*.01),900);
         if(ang>=FREE){
-          jarP=api.Press({len:TOTAL-FREE,jump:3.2,T:2.3,profile:p=>p<.3?.8:p<.75?1.6:.5,snapAt:.9,
-            onSlip(j,p,r){sfx.creak(clamp(r/1.5,.3,1.1));buzz(r>1.2?12:5);if(r>1.2)api.hint('뻑뻑해요… 조금만 더 돌려요')},
+          sfx.suck();jarP=api.Press({auto:true,v0:.5,v1:2.6,len:TOTAL-FREE,jump:3.2,T:2.3,profile:p=>p<.3?.8:p<.75?1.6:.5,snapAt:.9,
+            onSlip(){buzz(4)},
             onSnapStart(){fx.slow(.25,.3)},
             onSnap(){
               state='done';btn=0;sfx.pop();sfx.thunk(.5);buzz([20,30,60]);fx.shake(5);
@@ -140,7 +140,7 @@ DDAK.register({
               api.hint('가운데 단추가 쏙 들어갔어요. 완전 밀폐');
               api.complete('뽁!',`${label} 뚜껑을 끝까지 돌려 잠갔어요. 가운데 단추가 쏙 들어갔어요.`);
             }});
-          api.hint('거의 다 잠겼어요. 계속 돌려요');sfx.tink();
+          api.hint('걸렸다… 스르륵');sfx.tink();
         }
       }
     }

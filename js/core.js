@@ -69,6 +69,7 @@ const sfx={
   chime(){[1047,1319,1568].forEach((f,i)=>tone({f,t:.7,vol:.06,delay:.06+i*.06,type:'triangle',wet:.6}))},
   win(){[523,659,784,1047,1319].forEach((f,i)=>tone({f,t:.45,vol:.09,delay:i*.08,type:'triangle',wet:.45}))},
   whoosh(){noise({freq:300,f2:2400,t:.22,vol:.09,q:.7})},
+  suck(){noise({freq:260,f2:2600,q:1.1,t:.62,vol:.16});tone({f:150,f2:520,t:.6,vol:.07,type:'triangle'})},
   hiss(){noise({freq:7000,f2:1600,t:.8,vol:.07,type:'highpass'})},
   pop(){tone({f:380,f2:950,t:.08,vol:.25});noise({freq:1600,t:.03,vol:.16})},
   tonk(){tone({f:330,f2:290,t:.2,vol:.18,type:'triangle',wet:.25});noise({freq:2000,t:.02,vol:.12})},
@@ -87,8 +88,9 @@ function Press(o){
   const P={p:0,stress:0,thr:1,strain:0,vel:0,snapping:false,done:false,atWall:false,
     len:o.len,T:o.T??2.4,jump:o.jump??o.len*.032,snapAt:o.snapAt??.88,wallAt:o.wallAt??1,snapDur:o.snapDur??.13,profile:o.profile||(()=>1)};
   const nt=()=>{P.thr=Math.max(.002,P.T*P.profile(P.p)*(.55+Math.random()*.9))};nt();
+  P.auto=!!o.auto;P.acc=0;P.mark=0;
   P.step=(push,dt)=>{
-    if(P.done||P.snapping)return;
+    if(P.done||P.snapping||P.auto)return;
     push=clamp(push,0,36);
     if(P.p>=P.wallAt-1e-6){
       P.strain=clamp(push/50,0,1);
@@ -107,6 +109,15 @@ function Press(o){
   };
   P.update=dt=>{
     P.vel*=Math.exp(-dt*9);
+    /* 자동: 손을 떼도 스스로 빨려 들어간다. 처음엔 천천히, 갈수록 빠르게 */
+    if(P.auto&&!P.done&&!P.snapping&&!P.atWall){
+      const v=(o.v0??.4)+(o.v1??2.8)*P.p,before=P.p;
+      P.p=Math.min(P.wallAt,1,P.p+v*dt);P.vel=24+P.p*40;P.acc+=P.p-before;
+      if(P.acc>.1){P.acc=0;o.onSlip&&o.onSlip(0,P.p,.2,P.mark);P.mark=P.p}
+      if(P.wallAt<1&&P.p>=P.wallAt-1e-6){P.atWall=true;P.vel=0;o.onWall&&o.onWall()}
+      else if(P.p>=P.snapAt){P.snapping=true;P.t=0;P.from=P.p;o.onSnapStart&&o.onSnapStart()}
+      else if(P.p>=1){P.atWall=true;P.vel=0}
+    }
     if(P.snapping){
       P.t+=dt/P.snapDur;P.p=lerp(P.from,1,Math.min(1,P.t*P.t));
       if(P.t>=1){P.snapping=false;P.done=true;P.p=1;P.strain=0;o.onSnap&&o.onSnap()}
@@ -137,17 +148,17 @@ function Inserter(o){
         s.x+=dx*(o.damp??.45);s.slideV+=Math.abs(dx);
         s.y=o.contactY-(o.dir>0?o.h:0);
         s.err=s.x-o.slotX;
-        if(over>8){
-          const ok=o.canEnter?o.canEnter():true;
-          if(Math.abs(s.err)<=o.tol&&ok===true){
+        const ok=over>2?(o.canEnter?o.canEnter():true):null;
+        if(ok===true&&Math.abs(s.err)<=o.tol){
+          {
             s.x=o.slotX;s.mode='insert';s.tilt=0;g.base=fy;
-            s.press=Press({...o.press,len:o.len,onSlip:o.onSlip,onWall:o.onWall,onSnapStart:o.onSnapStart,
+            sfx.suck();s.press=Press({...o.press,auto:true,len:o.len,onSlip:o.onSlip,onWall:o.onWall,onSnapStart:o.onSnapStart,
               onSnap:()=>{s.mode='done';o.onSnap&&o.onSnap()}});
             o.onEnter&&o.onEnter();
-          }else{
-            s.tilt=clamp(-s.err/10,-1,1);
-            if(s.bumpArmed){s.bumpArmed=false;o.onCaught&&o.onCaught(ok===true?null:ok,s.err)}
           }
+        }else if(over>8){
+          s.tilt=clamp(-s.err/10,-1,1);
+          if(s.bumpArmed){s.bumpArmed=false;const why=o.canEnter?o.canEnter():true;o.onCaught&&o.onCaught(why===true?null:why,s.err)}
         }else if(over<4){s.bumpArmed=true;s.tilt*=.8}
       }else{
         if(s.contact){s.contact=false;g.ox=fx-s.x}
@@ -157,8 +168,7 @@ function Inserter(o){
       if(o.maxX!=null)s.x=Math.min(o.maxX,s.x);
       s.wasBefore=s.contact||before(s.y);
     }else if(s.mode==='insert'){
-      g.push=o.dir*(fy-g.base)-s.press.p*o.len;
-      if(g.push<-46&&o.onPull)o.onPull();
+      g.push=0;
     }
   };
   s.up=()=>{s.grab=null;if(s.mode==='free'){s.tilt=0}o.onRelease&&o.onRelease(s.mode)};

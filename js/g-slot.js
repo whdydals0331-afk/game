@@ -48,7 +48,7 @@ DDAK.register({
       slots=pickd.map((shape,i)=>{const s={shape,x,filled:false,t:0,mat:MATS[(lv-1+i)%MATS.length]};x+=dimsOf(shape).w*U+26;return s});
       clear=Math.max(.02,.5/Math.pow(lv,.8));tol=Math.max(2.5,7-lv*.5);
       spawn(0);
-      api.hint(slots.length>1?`홈 ${slots.length}개를 차례로 메워요. 빛나는 홈 위에서 아래로 꾹`:'조각을 홈 위에 맞추고, 아래로 꾹 밀어요');
+      api.hint(slots.length>1?`홈 ${slots.length}개를 차례로 메워요. 빛나는 홈 입구에 딱 맞추면 쏘옥 빨려 들어가요`:'조각을 홈 입구에 딱 맞추기만 하면 쏘옥 빨려 들어가요');
     };
     function spawn(i){
       idx=i;const S=slots[i];target=S.shape;cur=target;M=S.mat;slotX=S.x;
@@ -64,9 +64,9 @@ DDAK.register({
         canEnter:()=>sig(cur)===sig(target)?true:'모양 방향이 달라요. 돌려 보세요',
         onTouch(){sfx.tap()},
         onCaught(msg,err){miss++;sfx.bump();buzz(12);fx.shake(1.5);if(msg)api.pulse('rot');api.hint(msg||(Math.abs(err)>tol*3?'빛나는 홈 위로 옮겨서 맞춰요':'턱! 살짝 어긋났어요. 옆으로 조금만'))},
-        onEnter(){sfx.tink();buzz(10);api.hint('들어간다… 계속 꾹 밀어요')},
+        onEnter(){sfx.tink();buzz(10);api.hint('맞았다… 쏘오옥')},
         onSlip(j,p,r){
-          sfx.creak(clamp(r/1.6,.3,1.2));buzz(r>1.2?12:5);
+          buzz(4);
           fx.burst(slotX+(Math.random()<.5?0:td.w*U),SURF,{n:1,colors:['#f1dcb4','#d9b07a'],speed:40,up:30,size:1.6,life:.4});
           if(r>1.2&&!tightSaid){tightSaid=true;api.hint('빡빡해요… 조금만 더')}
         },

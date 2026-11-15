@@ -27,7 +27,7 @@ DDAK.register({
       const kinds=shuffle(list),sp=360/kinds.length;
       cands=kinds.map((c,j)=>{const h=randi(150,182),cx=sp/2+j*sp;return {...c,h,c:pick(COLORS),band:Math.random()<.5,hx:cx-c.w/2,hy:DESK-h,x:cx-c.w/2,y:DESK-h}});
       active=null;ins=null;state='pick';lean=0;wob=0;anim=null;said=false;
-      api.hint(round?'다음 빈틈이에요. 딱 맞는 책을 골라요':'빈틈에 꼭 맞을 것 같은 책을 골라 위로 끌어 올려요');
+      api.hint(round?'다음 빈틈이에요. 딱 맞는 책을 골라요':'꼭 맞을 것 같은 책을 골라 빈틈 입구에 대면 쏘옥 들어가요');
       api.gauge(`빈틈 ${(gw*.6).toFixed(1)}mm`);
     }
     function profileFor(k){
@@ -41,13 +41,13 @@ DDAK.register({
         press:profileFor(c.k),
         onTouch(){sfx.tap()},
         onCaught(msg,err){sfx.bump();buzz(10);api.hint('빈틈 바로 위로 옮겨 봐요')},
-        onEnter(){sfx.tink();buzz(8);api.hint(c.k==='thin'?'어… 술술 들어가는데?':'들어간다… 꾹 밀어요')},
+        onEnter(){sfx.tink();buzz(8);api.hint(c.k==='thin'?'어… 술술 들어가는데?':c.k==='thick'?'들어가나…?':'맞았다… 쏘오옥')},
         onSlip(j,p,r){
           if(c.k==='thin'){if(Math.random()<.3)sfx.creak(.25);return}
-          sfx.creak(clamp(r/1.5,.3,1.1));buzz(r>1.1?11:5);
+          buzz(4);
           if(c.k==='exact'&&p>.45&&!said){said=true;api.hint('양옆 책이 밀려나요… 조금만 더')}
         },
-        onWall(){wrong++;sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요')},
+        onWall(){wrong++;sfx.bump();buzz(25);fx.shake(2.5);api.hint('너무 두꺼워요. 양옆 책이 버티고 있어요');setTimeout(()=>{if(active===c&&(state==='drag'||state==='hold'))springOut()},320)},
         onSnapStart(){fx.slow(.25,.33)},
         onSnap(){
           state='snapped';sfx.thunk(.85);buzz([30,40,60]);fx.shake(5);wob=1;
@@ -61,7 +61,7 @@ DDAK.register({
         },
         onRelease(mode){
           if(mode==='free')goHome();
-          else if(mode==='insert'&&c.k==='thick')springOut();
+          else if(mode==='insert'&&c.k==='thick'&&state!=='anim'&&ins.press&&ins.press.atWall)springOut();
         }
       });
       ins.down(x,y);state='drag';sfx.tap();buzz(4);

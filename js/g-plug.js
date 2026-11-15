@@ -32,7 +32,7 @@ DDAK.register({
       state='play';flipA=1;flipping=0;led=0;lamp=0;latchA=0;passed={};said=false;doneT=0;
       make(180-T.mw/2+randi(-60,60),FACE+120);
       api.actions(T.orient?[{id:'flip',label:'⇋ 뒤집기',onClick:flip}]:[]);
-      api.hint(`${T.name}를 단자 아래에 맞추고 위로 꾹 밀어요`);
+      api.hint(`${T.name}를 단자 입구에 딱 맞추면 쏘옥 빨려 들어가요`);
       fx.focus(180,FACE);
     }
     const correct=()=>!T.orient||flipped!==sockSide;
@@ -42,13 +42,13 @@ DDAK.register({
         press:correct()?{profile:T.prof,snapAt:T.snap}:{profile:p=>p<.1?.4:1,wallAt:T.wrong},
         onTouch(){sfx.tap()},
         onCaught(){caught++;sfx.bump();buzz(10);api.hint('단자 입구에 안 맞아요. 옆으로 살짝')},
-        onEnter(){sfx.tink();buzz(8);api.hint(correct()?'들어간다… 꾹':'들어가나…?')},
+        onEnter(){sfx.tink();buzz(8);api.hint(correct()?'맞았다… 쏘옥':'들어가나…?')},
         onSlip(j,p,r,before){
-          sfx.creak(clamp(r/1.7,.25,1.1));buzz(r>1.3?12:5);
+          buzz(4);
           T.det.forEach(d=>{if(before<d&&p>=d&&!passed[d]){passed[d]=true;sfx.click(.45);buzz(15);fx.shake(1);api.hint('톡… 아직이에요, 조금 더')}});
           if(r>1.5&&!said){said=true;api.hint('빡빡해요… 거의 다 왔어요')}
         },
-        onWall(){wrongTries++;sfx.bump();buzz(30);fx.shake(3);api.hint('툭. 반대 방향이에요! 뒤집어 보세요');api.pulse('flip')},
+        onWall(){wrongTries++;sfx.bump();buzz(30);fx.shake(3);api.hint('툭. 반대 방향이에요! 뒤집어 보세요');api.pulse('flip');const me=ins;setTimeout(()=>{if(ins===me&&state==='play'&&!flipping){make(slotX,FACE+30);sfx.back()}},420)},
         onSnapStart(){fx.slow(.25,.3)},
         onSnap(){
           state='done';
