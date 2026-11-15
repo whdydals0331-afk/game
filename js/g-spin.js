@@ -98,36 +98,37 @@ DDAK.register({
     g.draw=ctx=>{
       const dpr=api.stage.dpr;
       // 돌판
-      ctx.drawImage(mat.tex('slab',360,560,(x,w,h)=>{
+      const slab=mat.tex('slab',360,560,(x,w,h)=>{
         const bg=x.createRadialGradient(130,170,30,180,300,470);bg.addColorStop(0,'#f3efe8');bg.addColorStop(1,'#b5ad9f');x.fillStyle=bg;x.fillRect(0,0,w,h);
         const R=mat.seeded(77);
         for(let i=0;i<9000;i++){x.fillStyle=R()<.5?'rgba(255,255,255,.10)':'rgba(60,50,40,.07)';x.fillRect(R()*w,R()*h,1+R()*1.6,1+R()*1.6)}
         x.strokeStyle='rgba(110,95,80,.14)';
         for(let i=0;i<8;i++){x.lineWidth=.5+R();x.beginPath();let a=R()*w,b=0;x.moveTo(a,b);while(b<h){a+=(R()-.5)*46;b+=18+R()*30;x.lineTo(a,b)}x.stroke()}
-      }),0,0,360,560);
+      });
+      ctx.drawImage(slab,0,0,360,560);
       // 진행 점
       for(let i=0;i<PER;i++){const x=180+(i-(PER-1)/2)*26,r=results[i];ctx.beginPath();ctx.arc(x,40,8,0,7);
         ctx.fillStyle=r===2?'#e2a92b':r===1?'#4f9b85':'rgba(0,0,0,.14)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.stroke()}
       // 구멍: 벽이 보이는 깊이감
       const HP=sh.pts.map(([x,y])=>[x*1.012,y*1.012]);
+      const holeA=state==='sink'?1-sinkA:1;
+      if(holeA>0){ctx.globalAlpha=holeA;
       ctx.save();path(ctx,HP,hole,1);ctx.fillStyle='#57493c';ctx.fill();ctx.clip();
       ctx.translate(8,13);path(ctx,HP,hole,1);ctx.fillStyle='#14100c';ctx.fill();ctx.restore();
-      path(ctx,HP,hole,1);ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1.2;ctx.stroke();
+      path(ctx,HP,hole,1);ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1.2;ctx.stroke();ctx.globalAlpha=1}
       // 조각
-      const s=1+Math.max(0,h)*.32+(h<0?h*.25:0),hh=Math.max(0,h);
+      const s=1+Math.max(0,h)*.32,hh=Math.max(0,h);
       const a=ang+(state==='rim'?wob*Math.PI/180:0);
+      // 조각: 돌판에서 잘라낸 바로 그 돌. 각도가 맞으면 무늬까지 이어진다
+      const lift=state==='sink'?(1-sinkA)*.3:.3+hh*.7;
       ctx.save();
-      ctx.shadowColor=`rgba(0,0,0,${.28+.2*(1-hh)})`;ctx.shadowBlur=(4+hh*30)*dpr;ctx.shadowOffsetX=(2+hh*22)*dpr;ctx.shadowOffsetY=(3+hh*32)*dpr;
-      path(ctx,sh.pts,a,s);
-      const side=ctx.createLinearGradient(CX-90,CY-90,CX+90,CY+90);side.addColorStop(0,shade(sh.c,-10));side.addColorStop(1,shade(sh.c,-70));
-      ctx.fillStyle=side;ctx.fill();ctx.restore();
-      // 윗면(모따기 안쪽)
-      path(ctx,sh.pts,a,s*.9);
-      const top=ctx.createLinearGradient(CX-80,CY-90,CX+70,CY+90);top.addColorStop(0,shade(sh.c,55));top.addColorStop(.5,shade(sh.c,8));top.addColorStop(1,shade(sh.c,-22));
-      ctx.fillStyle=top;ctx.fill();
-      ctx.save();path(ctx,sh.pts,a,s*.9);ctx.clip();
-      ctx.translate(CX,CY);ctx.rotate(-.6);ctx.fillStyle='rgba(255,255,255,.16)';ctx.fillRect(-140,-34,280,16);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(-140,-8,280,6);ctx.restore();
-      path(ctx,sh.pts,a,s);ctx.lineWidth=1.5;ctx.strokeStyle=state==='sink'?`rgba(255,255,255,${.45*(1-sinkA)+.1})`:'rgba(255,255,255,.4)';ctx.stroke();
+      ctx.shadowColor=`rgba(0,0,0,${(.28+.2*(1-hh))*Math.min(1,lift*3.4)})`;ctx.shadowBlur=(4+hh*30)*dpr;ctx.shadowOffsetX=(2+hh*22)*dpr;ctx.shadowOffsetY=(3+hh*32)*dpr;
+      path(ctx,sh.pts,a,s);ctx.fillStyle='#bdb5a8';ctx.fill();ctx.restore();
+      ctx.save();path(ctx,sh.pts,a,s);ctx.clip();
+      ctx.translate(CX,CY);ctx.rotate(a-hole);ctx.scale(s,s);ctx.translate(-CX,-CY);ctx.drawImage(slab,0,0,360,560);ctx.restore();
+      path(ctx,sh.pts,a,s);ctx.fillStyle=`rgba(255,255,255,${.2*lift})`;ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle=`rgba(255,255,255,${.85*lift})`;ctx.stroke();
+      ctx.save();ctx.translate(1.5,2.5);path(ctx,sh.pts,a,s);ctx.lineWidth=1.2;ctx.strokeStyle=`rgba(70,58,44,${.55*lift})`;ctx.stroke();ctx.restore();
       if(state==='sink'&&sinkA>=1&&stT<.6){path(ctx,sh.pts,hole,1.012);ctx.strokeStyle=`rgba(255,246,201,${1-stT/.6})`;ctx.lineWidth=4;ctx.shadowColor='#fff6c9';ctx.shadowBlur=16*dpr;ctx.stroke();ctx.shadowBlur=0}
     };
     function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)+amt,g2=(n>>8&255)+amt,b=(n&255)+amt;r=clamp(r,0,255);g2=clamp(g2,0,255);b=clamp(b,0,255);return `rgb(${r},${g2},${b})`}

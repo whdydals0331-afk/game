@@ -33,6 +33,13 @@ DDAK.register({
   create(api){
     const {sfx,buzz,fx,mat}=api;
     const g={};
+    let rotK=0;
+    /* 블록 한 장을 통째로 그려 두고, 조각은 그 그림에서 홈 자리를 그대로 오려 쓴다 → 들어가면 결이 이어진다 */
+    const blockTex=()=>mat.tex('slotblock',BW,BB-SURF,(x,w,h)=>{
+      x.drawImage(mat.wood(w,h,{base:'#dcb37c',dark:'#8d5d2e',light:'#f6dfb6',seed:11}),0,0,w,h);
+      const sh=x.createLinearGradient(0,0,0,h);sh.addColorStop(0,'rgba(255,255,255,.16)');sh.addColorStop(.25,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(60,30,5,.3)');x.fillStyle=sh;x.fillRect(0,0,w,h);
+      const ed=x.createLinearGradient(0,0,w,0);ed.addColorStop(0,'rgba(60,30,5,.3)');ed.addColorStop(.04,'rgba(60,30,5,0)');ed.addColorStop(.96,'rgba(60,30,5,0)');ed.addColorStop(1,'rgba(60,30,5,.35)');x.fillStyle=ed;x.fillRect(0,0,w,h);
+    });
     let lv,slots,idx,target,cur,ins,M,clear,tol,slotX,state,rotVis=0,miss,tightSaid,nextT,allT;
     g.start=L=>{
       lv=L;miss=0;allT=0;
@@ -51,9 +58,9 @@ DDAK.register({
       api.hint(slots.length>1?`홈 ${slots.length}개. 입구에서 맞추고 살짝 눌러요. 정확할수록 완벽!`:'홈 입구에서 좌우를 맞추고 살짝 눌러요. 정확할수록 완벽!');
     };
     function spawn(i){
-      idx=i;const S=slots[i];target=S.shape;cur=target;M=S.mat;slotX=S.x;
+      idx=i;const S=slots[i];target=S.shape;cur=target;M=S;slotX=S.x;rotK=0;
       const canRot=lv>=4;
-      if(canRot){const k=randi(1,3);for(let j=0;j<k;j++)cur=rot90(cur)}
+      if(canRot){const k=randi(1,3);for(let j=0;j<k;j++)cur=rot90(cur);rotK=k}
       const td=dimsOf(target),cd=dimsOf(cur);
       state='play';rotVis=0;tightSaid=false;nextT=0;
       fx.focus(slotX+td.w*U/2,SURF+td.h*U/2);
@@ -64,7 +71,7 @@ DDAK.register({
         canEnter:()=>sig(cur)===sig(target)?true:'모양 방향이 달라요. 돌려 보세요',
         onTouch(){sfx.tap()},
         onCaught(msg,err){api.miss();miss++;sfx.bump();buzz(12);fx.shake(1.5);if(msg)api.pulse('rot');api.hint(msg||(Math.abs(err)>tol*3?'빛나는 홈 위로 옮겨서 맞춰요':'턱! 살짝 어긋났어요. 옆으로 조금만'))},
-        onEnter(){sfx.tink();buzz(10);api.hint('맞았다… 쏘오옥')},
+        onEnter(){rotK=0;sfx.tink();buzz(10);api.hint('맞았다… 쏘오옥')},
         onSlip(j,p,r){
           buzz(4);
           fx.burst(slotX+(Math.random()<.5?0:td.w*U),SURF,{n:1,colors:['#f1dcb4','#d9b07a'],speed:40,up:30,size:1.6,life:.4});
@@ -82,7 +89,7 @@ DDAK.register({
           if(last){
             state='done';setTimeout(()=>sfx.chime(),260);
             setTimeout(()=>{fx.seam(BX,SURF,BX+BW,SURF,{w:4})},500);
-            api.hint('이음새 없는 한 덩어리가 됐어요');
+            api.hint('결까지 이어졌어요. 원래 하나였던 것처럼');
             api.complete('딱 맞았어요',`틈 ${clear.toFixed(2)}mm 홈 ${slots.length}개를 끝까지, 높이까지 딱 맞게 메웠어요.`,1500,miss);
           }else{nextT=.95;api.hint(`좋아요! 남은 홈 ${slots.length-idx-1}개`)}
         },
@@ -92,7 +99,7 @@ DDAK.register({
     function rotate(){
       if(state!=='play'||ins.mode!=='free')return;
       const cx=ins.x+ins.o.w/2,cy=ins.y+ins.o.h/2;
-      cur=rot90(cur);const d=dimsOf(cur);ins.o.w=d.w*U;ins.o.h=d.h*U;
+      cur=rot90(cur);rotK=(rotK+1)%4;const d=dimsOf(cur);ins.o.w=d.w*U;ins.o.h=d.h*U;
       ins.o.maxX=356-ins.o.w;ins.x=clamp(cx-ins.o.w/2,4,ins.o.maxX);ins.y=Math.max(10,Math.min(cy-ins.o.h/2,SURF-ins.o.h-12));
       ins.contact=false;ins.wasBefore=true;
       rotVis=-Math.PI/2;sfx.tap();buzz(5);
@@ -113,9 +120,7 @@ DDAK.register({
     function fillMat(ctx,rs,m){
       const d=dimsOf(rs),w=d.w*U,h=d.h*U;
       ctx.save();ctx.beginPath();rs.forEach(([a,b,ww,hh])=>ctx.rect(a*U,b*U,ww*U,hh*U));ctx.clip();
-      if(m.k==='wood')ctx.drawImage(mat.wood(w,h,m.o),0,0,w,h);
-      else if(m.k==='brass'){ctx.fillStyle=mat.metal(ctx,0,w);ctx.fillRect(0,0,w,h);ctx.globalAlpha=.07;ctx.fillStyle='#000';for(let y=0;y<h;y+=3)ctx.fillRect(0,y,w,1);ctx.globalAlpha=1}
-      else{ctx.fillStyle=m.c;ctx.fillRect(0,0,w,h);const q=ctx.createLinearGradient(0,0,w,h);q.addColorStop(0,'rgba(255,255,255,.4)');q.addColorStop(.4,'rgba(255,255,255,0)');q.addColorStop(1,'rgba(0,0,0,.3)');ctx.fillStyle=q;ctx.fillRect(0,0,w,h)}
+      const dp=api.stage.dpr;ctx.drawImage(blockTex(),(m.x-BX)*dp,0,w*dp,h*dp,0,0,w,h);
       ctx.restore();
     }
     function drawPiece(ctx,rs,m,edgeA){
@@ -144,14 +149,12 @@ DDAK.register({
       }),0,0,360,560);
       // 나무 블록
       mat.shadow(ctx,22,0,12,.5,()=>{ctx.fillStyle='#8d5d2e';ctx.fillRect(BX,SURF,BW,BB-SURF)});
-      ctx.drawImage(mat.wood(BW,BB-SURF,{base:'#dcb37c',dark:'#8d5d2e',light:'#f6dfb6',seed:11}),BX,SURF,BW,BB-SURF);
-      const sh=ctx.createLinearGradient(0,SURF,0,BB);sh.addColorStop(0,'rgba(255,255,255,.16)');sh.addColorStop(.25,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(60,30,5,.3)');ctx.fillStyle=sh;ctx.fillRect(BX,SURF,BW,BB-SURF);
-      const ed=ctx.createLinearGradient(BX,0,BX+BW,0);ed.addColorStop(0,'rgba(60,30,5,.3)');ed.addColorStop(.04,'rgba(60,30,5,0)');ed.addColorStop(.96,'rgba(60,30,5,0)');ed.addColorStop(1,'rgba(60,30,5,.35)');ctx.fillStyle=ed;ctx.fillRect(BX,SURF,BW,BB-SURF);
+      ctx.drawImage(blockTex(),BX,SURF,BW,BB-SURF);
       // 홈
       slots.forEach((S,i)=>{
         if(S.filled){
-          const a=Math.max(.1,1-S.t*.9);
-          ctx.save();ctx.translate(S.x,SURF);drawPiece(ctx,S.shape,S.mat,a);ctx.restore();return;
+          const a=Math.max(0,1-S.t*.8);   // 테두리가 사라지면 블록과 구분이 안 된다
+          if(a>0){ctx.save();ctx.translate(S.x,SURF);drawPiece(ctx,S.shape,S,a);ctx.restore()}return;
         }
         ctx.save();ctx.beginPath();
         S.shape.forEach(([x,y,w,h])=>ctx.rect(S.x+x*U-1.2,SURF+y*U-(y?1.2:0),w*U+2.4,h*U+(y?2.4:1.2)));
@@ -187,7 +190,8 @@ DDAK.register({
         const lift=ins.contact?.25:1;
         mat.shadow(ctx,6+16*lift,6*lift,4+14*lift,.45,()=>{ctx.fillStyle='#000';cur.forEach(([x,y,ww,hh])=>ctx.fillRect(x*U,y*U,ww*U,hh*U))});
       }
-      drawPiece(ctx,cur,M,1);
+      const td=dimsOf(target);ctx.translate(w/2,h/2);ctx.rotate(rotK*Math.PI/2);ctx.translate(-td.w*U/2,-td.h*U/2);
+      drawPiece(ctx,target,M,1);
       ctx.restore();
     };
     g.down=(x,y)=>{
